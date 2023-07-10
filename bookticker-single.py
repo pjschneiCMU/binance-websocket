@@ -53,7 +53,7 @@ def save_csv_periodically(csv_file_path, symbol, interval):
     save_counter += 1
 
     # Check if it's time to create a new CSV file
-    if save_counter % 6 == 0:
+    if save_counter % 60 == 0:
         csv_file_path = create_csv_file(symbol)
 
     # You can perform additional logic here if needed before saving the CSV
