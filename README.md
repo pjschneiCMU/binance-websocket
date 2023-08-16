@@ -23,4 +23,3 @@ Feel free to explore the code and adapt it to your specific requirements.
 If you have any questions or need further assistance, please don't hesitate to reach out.
 
 Happy coding!
-```
