@@ -1,5 +1,5 @@
 """
-Binance - Orderbook (bid price, bid volume, ask price, ask volume, timestamp) - data provided every 1s
+Binance - Orderbook (bid price, bid volume, ask price, ask volume, timestamp)
 - Modify script to receive orderbook in more depth
 - Change 'counter' and 'interval' based on storage requirements
 """
@@ -10,6 +10,9 @@ import csv
 import os
 import threading
 from datetime import datetime, timedelta
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 # Global variables for WebSocket connection and CSV writer
 ws = None
@@ -17,39 +20,46 @@ csv_writer = None
 csv_file = None
 save_counter = -1
 
-# Function to handle WebSocket messages
+# Constants - Adopt accordingly
+depth = 10
+symbol = 'BTCUSDT'
+interval = 10
+
 def on_message(ws, message):
     global csv_writer
     message = json.loads(message)
-    if 'e' in message and message['e'] == 'depthUpdate':
-        if message['b'] and message['a']:
-            bid_price = float(message['b'][0][0])
-            bid_volume = float(message['b'][0][1])
-            ask_price = float(message['a'][0][0])
-            ask_volume = float(message['a'][0][1])
-            timestamp = int(message['E'])
-            csv_writer.writerow([timestamp, bid_price, bid_volume, ask_price, ask_volume])
+    if 'lastUpdateId' in message:
+        timestamp = datetime.now().isoformat(sep=' ', timespec='microseconds') 
+        # Concatenate bid and ask levels as a single row
+        row = [message['lastUpdateId'], timestamp]
+        for i in range(0, depth):
+            bid_price, bid_volume = message['bids'][i]
+            ask_price, ask_volume = message['asks'][i]
+            row.extend([float(bid_price), float(bid_volume), float(ask_price), float(ask_volume)])
+        csv_writer.writerow(row)
 
 # Function to handle WebSocket errors
 def on_error(ws, error):
-    print(error)
+     logging.error(error)
 
 # Function to open the WebSocket connection and subscribe to the order book channel
-def on_open(ws):
-    print("WebSocket connection opened")
-    ws.send(json.dumps({
-        "method": "SUBSCRIBE",
-        "params": [
-            "btcusdt@depth",
-        ],
-        "id": 1
-    }))
+def on_open_factory(symbol, depth):
+    def on_open(ws):
+        logging.info("WebSocket connection opened")
+        ws.send(json.dumps({
+            "method": "SUBSCRIBE",
+            "params": [
+                f"{symbol.lower()}@depth{depth}@100ms",
+            ],
+            "id": 1
+        }))
+    return on_open
 
 # Function to periodically save the CSV file
-def save_csv_periodically(csv_file_path, interval):
+def save_csv_periodically(csv_file_path):
     global csv_writer, save_counter
-    threading.Timer(interval, save_csv_periodically, args=(csv_file_path, interval)).start()
-    
+    threading.Timer(interval, save_csv_periodically, args=(csv_file_path,)).start()
+
     # Increment the save counter
     save_counter += 1
 
@@ -57,27 +67,34 @@ def save_csv_periodically(csv_file_path, interval):
     if save_counter % 60 == 0:
         csv_file_path = create_csv_file()
 
-    # You can perform additional logic here if needed before saving the CSV
-
 # Function to create a new CSV file
 def create_csv_file():
     # Create a new folder for each new calendar day
     current_date = datetime.now().strftime("%Y%m%d")
-    folder_path = f"data/{current_date}"
+    folder_path = f"data/{symbol}/{current_date}"
     os.makedirs(folder_path, exist_ok=True)
 
     # Create a new CSV file with the current timestamp
     current_time = datetime.now()
-    csv_filename = f'{folder_path}/bid_ask_data_{current_time.strftime("%Y%m%d_%H%M%S")}.csv'
+    csv_filename = f'{folder_path}/bid_ask_depth_{depth}_data_{symbol}_{current_time.strftime("%Y%m%d_%H%M%S")}.csv'
 
     global csv_writer, csv_file
     if csv_file is not None:
         csv_file.close()
-    csv_file = open(csv_filename, mode='w', newline='')
+    csv_file = open_csv_file(csv_filename)
     csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['Timestamp', 'Bid Price', 'Bid Volume', 'Ask Price', 'Ask Volume'])
-    
+
+    # Write the header if the file is empty
+    if csv_file.tell() == 0:
+        header = ['Update ID', 'Timestamp']
+        for i in range(1, depth+1):
+            header.extend([f'Bid Price {i}', f'Bid Volume {i}', f'Ask Price {i}', f'Ask Volume {i}'])
+        csv_writer.writerow(header)
+
     return csv_filename
+
+def open_csv_file(csv_filename):
+    return open(csv_filename, mode='w', newline='', encoding='utf-8')
 
 def websocket_thread():
     global ws
@@ -88,13 +105,14 @@ def websocket_thread():
             on_error=on_error,
             on_close=on_close,
         )
+        on_open = on_open_factory(symbol, depth)
         ws.on_open = on_open
         ws.run_forever()
 
 # Function to handle WebSocket connection closure
 def on_close(ws):
     global csv_writer, csv_file
-    print("WebSocket connection closed")
+    logging.info("WebSocket connection closed")
     csv_writer = None
     if csv_file is not None:
         csv_file.close()
@@ -108,5 +126,4 @@ if __name__ == "__main__":
     ws_thread.start()
 
     # Periodically save the CSV file every 10 seconds
-    save_interval = 10
-    save_csv_periodically(csv_file_path, save_interval)
+    save_csv_periodically(csv_file_path)
