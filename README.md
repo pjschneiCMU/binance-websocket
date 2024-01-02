@@ -12,7 +12,7 @@ This repository includes the following files:
 
 - `bookticker-async-single.py`: Streams real-time 'bookTicker' data asynchronously.
 - `bookticker-single.py`: Streams real-time 'bookTicker' data using threading.
-- `orderbook-depth-single.py`: Streams top-level 'depth' data every second using threading.
+- `orderbook-depth-single.py`: Streams top-level 'depth' data using threading.
 
 ## Data Storage
 
