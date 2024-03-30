@@ -8,7 +8,7 @@ import json
 import csv
 import os
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 # Global variables for WebSocket connection and CSV writer
 ws = None
@@ -61,12 +61,12 @@ def save_csv_periodically(csv_file_path, symbol, interval):
 # Function to create a new CSV file
 def create_csv_file(symbol):
     # Create a new folder for each new calendar day
-    current_date = datetime.now().strftime("%Y%m%d")
+    current_date = datetime.now(timezone.utc).strftime("%Y%m%d")
     folder_path = f"data/{symbol}/{current_date}"
     os.makedirs(folder_path, exist_ok=True)
 
     # Create a new CSV file with the current timestamp
-    current_time = datetime.now()
+    current_time = datetime.now(timezone.utc)
     csv_filename = f'{folder_path}/bid_ask_data_{symbol}_{current_time.strftime("%Y%m%d_%H%M%S")}.csv'
 
     global csv_writer, csv_file
