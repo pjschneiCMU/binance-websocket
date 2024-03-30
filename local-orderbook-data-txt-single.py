@@ -37,7 +37,7 @@ async def orderbook_download_txt(
     
     async with connect(websocket_url) as websocket:
         while True:
-            today = datetime.now(timezone.utc).date()
+            today = datetime.now(timezone.utc).strftime("%Y%m%d")
             data = await websocket.recv()
             async with aiofiles.open(f"{path_u}{pair_lower}-depth-updates-{today}.txt", mode="a") as f:
                 await f.write(data + '\n')
