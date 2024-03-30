@@ -8,7 +8,7 @@ import json
 import csv
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Global variables for WebSocket connection and CSV writer
 ws = None
@@ -24,7 +24,7 @@ def on_message(ws, message):
         bid_volume = float(message['B'])
         ask_price = float(message['a'])
         ask_volume = float(message['A'])
-        timestamp = datetime.utcnow().isoformat(sep=' ', timespec='microseconds')
+        timestamp = datetime.now(timezone.utc).isoformat(sep=' ', timespec='microseconds')
         csv_writer.writerow([timestamp, bid_price, bid_volume, ask_price, ask_volume])
 
 # Function to handle WebSocket errors
