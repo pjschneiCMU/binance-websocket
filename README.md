@@ -13,12 +13,12 @@ This repository includes the following files:
 - `bookticker-async-single.py`: Streams real-time 'bookTicker' data asynchronously.
 - `bookticker-single.py`: Streams real-time 'bookTicker' data using threading.
 - `orderbook-depth-single.py`: Streams top-level 'depth' data using threading.
-- `local-orderbook-data-parquet-single.py`: Saves depth updates asynchronously and order book snapshots for the construction of a local order book as Parquet files.
-- `local-orderbook-data-txt-single.py`: Saves depth updates asynchronously and order book snapshots for the construction of a local order book as text files.
+- `local-orderbook-data-parquet-single.py`: Saves depth updates asynchronously, and orderbook snapshots for construction of local orderbook as Parquet files.
+- `local-orderbook-data-txt-single.py`: Saves depth updates asynchronously, and orderbook snapshots for construction of local orderbook as text files.
 
 ## Data Storage
 
-The files (`bookticker-async-single.py`, `bookticker-single.py`, `orderbook-depth-single.py`) store retrieved information in CSV files, capturing data every 10 minutes. This allows capturing the entire day in multiple 10-minute snapshots for better analysis and retrieval.
+The files (`bookticker-async-single.py`, `bookticker-single.py`, `orderbook-depth-single.py`) store retrieved information in CSV files, capturing data in 10-minute intervals. This allows capturing the entire day in multiple 10-minute intervals for better analysis and retrieval.
 
 The `local-orderbook-data-parquet-single.py` saves Parquet files for depth updates and snapshots separately at approximately 10-minute intervals.
 
