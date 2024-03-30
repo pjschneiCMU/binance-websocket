@@ -9,7 +9,7 @@ import json
 import csv
 import os
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -75,7 +75,7 @@ def create_csv_file():
     os.makedirs(folder_path, exist_ok=True)
 
     # Create a new CSV file with the current timestamp
-    current_time = datetime.now()
+    current_time = datetime.now(timezone.utc)
     csv_filename = f'{folder_path}/bid_ask_depth_{depth}_data_{symbol}_{current_time.strftime("%Y%m%d_%H%M%S")}.csv'
 
     global csv_writer, csv_file
