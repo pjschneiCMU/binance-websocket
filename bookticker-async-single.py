@@ -7,7 +7,7 @@ import asyncio
 import json
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import websockets
 
@@ -24,7 +24,7 @@ async def on_message(message):
         bid_volume = float(message['B'])
         ask_price = float(message['a'])
         ask_volume = float(message['A'])
-        timestamp = datetime.utcnow().isoformat(sep=' ', timespec='microseconds')
+        timestamp = datetime.now(timezone.utc).isoformat(sep=' ', timespec='microseconds')
         csv_writer.writerow([timestamp, bid_price, bid_volume, ask_price, ask_volume])
 
 # Function to handle WebSocket errors
