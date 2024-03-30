@@ -1,6 +1,6 @@
 # Binance WebSocket
 
-This repository provides a Python implementation to stream data from Binance using WebSocket.
+This repository provides a Python implementation for streaming Spot data from Binance using WebSocket. For other financial derivatives, please pay attention to the different API endpoints.
 
 ## Documentation
 
@@ -23,6 +23,9 @@ The files (`bookticker-async-single.py`, `bookticker-single.py`, `orderbook-dept
 The `local-orderbook-data-parquet-single.py` saves Parquet files for depth updates and snapshots separately at approximately 10-minute intervals.
 
 The `local-orderbook-data-txt-single.py` saves text files for depth updates and snapshots separately in one file per day.
+
+##
+
 
 Feel free to explore the code and adapt it to your specific requirements.
 
