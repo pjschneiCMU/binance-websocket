@@ -24,8 +24,12 @@ The `local-orderbook-data-parquet-single.py` saves Parquet files for depth updat
 
 The `local-orderbook-data-txt-single.py` saves text files for depth updates and snapshots separately in one file per day.
 
-##
+## Additional Information
 
+Historical trades for a specific period can be downloaded via the command-line interface using the following command. For example, to download all trades for the currency pair ETHUSDT in January 2024:
+```
+curl -OJL "https://data.binance.vision/data/spot/monthly/trades/ETHUSDT/ETHUSDT-trades-2024-01.zip"
+```
 
 Feel free to explore the code and adapt it to your specific requirements.
 
