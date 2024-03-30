@@ -9,7 +9,7 @@ import json
 import csv
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +29,7 @@ def on_message(ws, message):
     global csv_writer
     message = json.loads(message)
     if 'lastUpdateId' in message:
-        timestamp = datetime.now().isoformat(sep=' ', timespec='microseconds') 
+        timestamp = datetime.now(timezone.utc).isoformat(sep=' ', timespec='microseconds') 
         # Concatenate bid and ask levels as a single row
         row = [message['lastUpdateId'], timestamp]
         for i in range(0, depth):
@@ -70,7 +70,7 @@ def save_csv_periodically(csv_file_path):
 # Function to create a new CSV file
 def create_csv_file():
     # Create a new folder for each new calendar day
-    current_date = datetime.now().strftime("%Y%m%d")
+    current_date = datetime.now(timezone.utc).strftime("%Y%m%d")
     folder_path = f"data/{symbol}/{current_date}"
     os.makedirs(folder_path, exist_ok=True)
 
