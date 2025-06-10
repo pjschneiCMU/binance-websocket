@@ -1,118 +1,112 @@
 """
-Binance - bookTicker (bid price, bid volume, ask price, ask volume) - real-time data
-- Change 'counter' and 'interval' based on storage requirements
+Binance Book Ticker Data Collector
+- Continuously captures BTCUSDT book ticker data using the official Binance API
+- Saves data to a simple append-only text file
+- Designed for long-term data collection (many weeks)
+
+Installation:
+    pip install python-binance
 """
 
-import websocket
-import json
-import csv
 import os
+import time
+import signal
 import threading
 from datetime import datetime, timezone
+from binance import ThreadedWebsocketManager
 
-# Global variables for WebSocket connection and CSV writer
-ws = None
-csv_writer = None
-csv_file = None
-save_counter = -1
+SYMBOL = 'BTCUSDT'
 
-def on_message(ws, message):
-    global csv_writer
-    message = json.loads(message)
-    if 's' in message and message['s'] == symbol:
-        bid_price = float(message['b'])
-        bid_volume = float(message['B'])
-        ask_price = float(message['a'])
-        ask_volume = float(message['A'])
-        timestamp = datetime.now(timezone.utc).isoformat(sep=' ', timespec='microseconds')
-        csv_writer.writerow([timestamp, bid_price, bid_volume, ask_price, ask_volume])
 
-# Function to handle WebSocket errors
-def on_error(ws, error):
-    print(error)
+class BookTickerCollector:
+    def __init__(self, symbol):
+        self.symbol = symbol
+        self.twm = None
+        self.data_file = None
+        self.stream_id = None
 
-# Function to open the WebSocket connection and subscribe to the order book channel
-def on_open_factory(symbol):
-    def on_open(ws):
-        print("WebSocket connection opened")
-        ws.send(json.dumps({
-            "method": "SUBSCRIBE",
-            "params": [
-                f"{symbol.lower()}@bookTicker",
-            ],
-            "id": 1
-        }))
-    return on_open
+        # Create data directory structure
+        self.base_dir = f"data/{self.symbol}"
+        os.makedirs(self.base_dir, exist_ok=True)
 
-# Function to periodically save the CSV file
-def save_csv_periodically(csv_file_path, symbol, interval):
-    global csv_writer, save_counter
-    threading.Timer(interval, save_csv_periodically, args=(csv_file_path, symbol, interval)).start()
+        # Initialize the file
+        self._setup_file()
 
-    # Increment the save counter
-    save_counter += 1
+    def _setup_file(self):
+        """Setup the append-only data file"""
+        folder_path = f"{self.base_dir}/"
+        os.makedirs(folder_path, exist_ok=True)
 
-    # Check if it's time to create a new CSV file
-    if save_counter % 60 == 0:
-        csv_file_path = create_csv_file(symbol)
+        filename = f'{folder_path}/book_ticker_{self.symbol}.txt'
 
-    # You can perform additional logic here if needed before saving the CSV
+        # Open file in append mode
+        self.data_file = open(filename, mode='a', encoding='utf-8')
 
-# Function to create a new CSV file
-def create_csv_file(symbol):
-    # Create a new folder for each new calendar day
-    current_date = datetime.now(timezone.utc).strftime("%Y%m%d")
-    folder_path = f"data/{symbol}/{current_date}"
-    os.makedirs(folder_path, exist_ok=True)
+        # Write header if file is new (empty)
+        if os.path.getsize(filename) == 0:
+            header = "timestamp|bid_price|bid_qty|ask_price|ask_qty\n"
+            self.data_file.write(header)
 
-    # Create a new CSV file with the current timestamp
-    current_time = datetime.now(timezone.utc)
-    csv_filename = f'{folder_path}/bid_ask_data_{symbol}_{current_time.strftime("%Y%m%d_%H%M%S")}.csv'
+        print(f"Appending data to: {filename}")
 
-    global csv_writer, csv_file
-    if csv_file is not None:
-        csv_file.close()
-    csv_file = open_csv_file(csv_filename)
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['Timestamp', 'Bid Price', 'Bid Volume', 'Ask Price', 'Ask Volume'])
+        return filename
 
-    return csv_filename
+    def process_message(self, msg):
+        """Process incoming book ticker messages"""
 
-def open_csv_file(csv_filename):
-    return open(csv_filename, mode='w', newline='', encoding='utf-8')
+        try:
+            # Extract the relevant data - minimal processing
+            timestamp = datetime.now(timezone.utc).isoformat()
 
-def websocket_thread():
-    global ws
-    while True:
-        ws = websocket.WebSocketApp(
-            "wss://stream.binance.com:9443/ws",
-            on_message=on_message,
-            on_error=on_error,
-            on_close=on_close,
-        )
-        on_open = on_open_factory(symbol)
-        ws.on_open = on_open
-        ws.run_forever()
+            # Write directly without converting to float to save processing time
+            # Format: timestamp|bid_price|bid_qty|ask_price|ask_qty
+            self.data_file.write(f"{timestamp}|{msg['b']}|{msg['B']}|{msg['a']}|{msg['A']}\n")
 
-# Function to handle WebSocket connection closure
-def on_close(ws):
-    global csv_writer, csv_file
-    print("WebSocket connection closed")
-    csv_writer = None
-    if csv_file is not None:
-        csv_file.close()
+        except Exception as e:
+            print(f"Error processing message: {e}")
+
+    def start(self):
+        """Start the book ticker data collection"""
+        try:
+            # Initialize the WebSocket manager with a larger queue size
+            self.twm = ThreadedWebsocketManager(api_key=None, api_secret=None, tld='com', max_queue_size=100000)
+            self.twm.start()
+
+            # Start the book ticker socket
+            self.stream_id = self.twm.start_symbol_book_ticker_socket(
+                symbol=self.symbol,
+                callback=self.process_message
+            )
+
+            print(f"Started book ticker collection for {self.symbol}")
+
+        except Exception as e:
+            print(f"Error starting collector: {e}")
+            raise
+
+
+def signal_handler(sig, frame):
+    collector.data_file.flush()
+    collector.twm.stop()
+    collector.data_file.close()
+    print('You pressed Ctrl+C!')
+    exit(0)
+
 
 if __name__ == "__main__":
-    symbol = 'BTCUSDT'
-    # Create the initial CSV file
-    csv_file_path = create_csv_file(symbol)
 
-    # Start the WebSocket thread in a separate thread
-    ws_thread = threading.Thread(target=websocket_thread)
-    ws_thread.start()
+    try:
+        print(f"Starting book ticker data collection for {SYMBOL}")
+        # Create and start the collector
+        collector = BookTickerCollector(SYMBOL)
+        collector.start()
 
-    # Periodically save the CSV file every 10 seconds
-    save_interval = 10
-    save_csv_periodically(csv_file_path, symbol, save_interval)
+        signal.signal(signal.SIGINT, signal_handler)
 
+        # Keep the main thread running
+        while True:
+            time.sleep(1)
 
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        running = False
